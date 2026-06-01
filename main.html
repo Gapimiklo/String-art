@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full-Color String Art Studio (Fixed)</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --border: #334155;
+            --text: #f8fafc;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { margin-top: 0; margin-bottom: 5px; }
+        p { color: #94a3b8; margin-top: 0; margin-bottom: 20px; }
+        
+        .dashboard {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            align-items: flex-start;
+        }
+        
+        .sidebar {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 320px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .section {
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .section h3 { margin: 0; font-size: 13px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px;}
+        
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+        
+        input[type="number"], input[type="range"] {
+            background: #0f172a;
+            color: white;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        
+        .file-lbl {
+            background: var(--accent);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            display: block;
+        }
+        .file-lbl:hover { background: var(--accent-hover); }
+        input[type="file"] { display: none; }
+        
+        #generateBtn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            width: 100%;
+        }
+        #generateBtn:hover { background: #059669; }
+        #generateBtn:disabled { background: var(--border); color: #64748b; cursor: not-allowed; }
+        
+        .workspaces {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            flex-grow: 1;
+        }
+        
+        .canvas-card {
+            background: var(--panel);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .canvas-container {
+            width: 450px;
+            height: 450px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .status-text {
+            margin-top: 15px;
+            font-family: monospace;
+            color: #3b82f6;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 140px;
+            margin-top: 10px;
+            background: #0f172a;
+            color: #10b981;
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Full-Color String Art Studio</h1>
+    <p>Simulates physical subtractive color layering using standard multi-colored threads</p>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <label class="file-lbl">
+                Load Target Image
+                <input type="file" id="imageUpload" accept="image/*">
+            </label>
+
+            <div class="section">
+                <h3>Image Tuning</h3>
+                <div class="grid-inputs">
+                    <div class="input-group">
+                        <label>Contrast</label>
+                        <input type="range" id="contrast" min="-100" max="100" value="45">
+                    </div>
+                    <div class="input-group">
+                        <label>Brightness</label>
+                        <input type="range" id="brightness" min="-100" max="100" value="5">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Loom Setup</h3>
+                <div class="grid-inputs">
+                    <div class="input-group">
+                        <label>Pins (Max 500)</label>
+                        <input type="number" id="numPins" value="200" min="100" max="500">
+                    </div>
+                    <div class="input-group">
+                        <label>Min Pin Jump</label>
+                        <input type="number" id="minDistance" value="20" min="5" max="100">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Thread Allocation (Lines)</h3>
+                <div class="grid-inputs">
+                    <div class="input-group">
+                        <label style="color:#aaa;">Black Lines</label>
+                        <input type="number" id="linesBlack" value="1000" min="0" max="4000">
+                    </div>
+                    <div class="input-group">
+                        <label style="color:#ef4444;">Red Lines</label>
+                        <input type="number" id="linesRed" value="800" min="0" max="4000">
+                    </div>
+                    <div class="input-group">
+                        <label style="color:#22c55e;">Green Lines</label>
+                        <input type="number" id="linesGreen" value="800" min="0" max="4000">
+                    </div>
+                    <div class="input-group">
+                        <label style="color:#3b82f6;">Blue Lines</label>
+                        <input type="number" id="linesBlue" value="800" min="0" max="4000">
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top: 4px;">
+                    <label>Internal Thread Weight</label>
+                    <input type="number" id="lineWeight" value="15" min="1" max="50">
+                </div>
+            </div>
+
+            <button id="generateBtn" disabled>Compute String Paths</button>
+        </div>
+
+        <div class="workspaces">
+            <div class="canvas-card">
+                <h3 style="margin: 0 0 10px 0; color: #94a3b8;">Filtered RGB Reference</h3>
+                <div class="canvas-container">
+                    <canvas id="sourceCanvas" width="800" height="800"></canvas>
+                </div>
+            </div>
+
+            <div class="canvas-card">
+                <h3 style="margin: 0 0 10px 0; color: #94a3b8;">Interactive Preview</h3>
+                <div class="canvas-container">
+                    <canvas id="artCanvas" width="800" height="800"></canvas>
+                </div>
+                <div id="status" class="status-text">Upload an image to unlock generation.</div>
+                <textarea id="sequenceOutput" placeholder="Your instructions with exact color swap steps will print here..." readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SIZE = 800; 
+
+        const imageUpload = document.getElementById('imageUpload');
+        const generateBtn = document.getElementById('generateBtn');
+        const contrastSlider = document.getElementById('contrast');
+        const brightnessSlider = document.getElementById('brightness');
+        const numPinsInput = document.getElementById('numPins');
+        const minDistanceInput = document.getElementById('minDistance');
+        const lineWeightInput = document.getElementById('lineWeight');
+        
+        const linesBlackInput = document.getElementById('linesBlack');
+        const linesRedInput = document.getElementById('linesRed');
+        const linesGreenInput = document.getElementById('linesGreen');
+        const linesBlueInput = document.getElementById('linesBlue');
+
+        const sourceCanvas = document.getElementById('sourceCanvas');
+        const artCanvas = document.getElementById('artCanvas');
+        const sequenceOutput = document.getElementById('sequenceOutput');
+        const statusText = document.getElementById('status');
+
+        const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+        const artCtx = artCanvas.getContext('2d');
+
+        let pins = [];
+        let uploadedImage = null;
+        let isGenerating = false;
+        let rDeficit = null, gDeficit = null, bDeficit = null;
+        let rBackup = null, gBackup = null, bBackup = null;
+        let animationId = null;
+
+        function getLinePixels(p1, p2) {
+            let pixels = [];
+            let x0 = Math.round(p1.x), y0 = Math.round(p1.y);
+            let x1 = Math.round(p2.x), y1 = Math.round(p2.y);
+            let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+            let dy = Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+            let err = (dx > dy ? dx : -dy) / 2;
+
+            while (true) {
+                if (x0 >= 0 && x0 < SIZE && y0 >= 0 && y0 < SIZE) {
+                    pixels.push(y0 * SIZE + x0);
+                }
+                if (x0 === x1 && y0 === y1) break;
+                let e2 = err;
+                if (e2 > -dx) { err -= dy; x0 += sx; }
+                if (e2 < dy) { err += dx; y0 += sy; }
+            }
+            return pixels;
+        }
+
+        function updatePins(count) {
+            pins = [];
+            const center = SIZE / 2;
+            const radius = SIZE / 2 - 4;
+            for (let i = 0; i < count; i++) {
+                const angle = (i * 2 * Math.PI) / count;
+                pins.push({
+                    x: center + radius * Math.cos(angle),
+                    y: center + radius * Math.sin(angle)
+                });
+            }
+        }
+
+        function processSourceImage() {
+            if (!uploadedImage) return;
+
+            sourceCtx.fillStyle = "#ffffff";
+            sourceCtx.fillRect(0, 0, SIZE, SIZE);
+
+            const scale = Math.max(SIZE / uploadedImage.width, SIZE / uploadedImage.height);
+            const x = (SIZE / 2) - (uploadedImage.width / 2) * scale;
+            const y = (SIZE / 2) - (uploadedImage.height / 2) * scale;
+
+            sourceCtx.save();
+            sourceCtx.beginPath();
+            sourceCtx.arc(SIZE/2, SIZE/2, SIZE/2 - 2, 0, Math.PI * 2);
+            sourceCtx.clip();
+            sourceCtx.drawImage(uploadedImage, x, y, uploadedImage.width * scale, uploadedImage.height * scale);
+            sourceCtx.restore();
+
+            const imgData = sourceCtx.getImageData(0, 0, SIZE, SIZE);
+            const d = imgData.data;
+
+            const contrast = parseInt(contrastSlider.value);
+            const brightness = parseInt(brightnessSlider.value);
+            const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+            rDeficit = new Float32Array(SIZE * SIZE);
+            gDeficit = new Float32Array(SIZE * SIZE);
+            bDeficit = new Float32Array(SIZE * SIZE);
+
+            for (let i = 0; i < d.length; i += 4) {
+                let r = factor * (d[i] - 128) + 128 + brightness;
+                let g = factor * (d[i+1] - 128) + 128 + brightness;
+                let b = factor * (d[i+2] - 128) + 128 + brightness;
+
+                d[i] = Math.min(255, Math.max(0, r));
+                d[i+1] = Math.min(255, Math.max(0, g));
+                d[i+2] = Math.min(255, Math.max(0, b));
+
+                rDeficit[i / 4] = 255 - d[i];
+                gDeficit[i / 4] = 255 - d[i+1];
+                bDeficit[i / 4] = 255 - d[i+2];
+            }
+            sourceCtx.putImageData(imgData, 0, 0);
+            
+            rBackup = new Float32Array(rDeficit);
+            gBackup = new Float32Array(gDeficit);
+            bBackup = new Float32Array(bDeficit);
+
+            generateBtn.disabled = false;
+            statusText.innerText = "Target parsed successfully. Ready to generate.";
+        }
+
+        // FIXED UPLOAD LOGIC USING OBJECT URL & ANONYMOUS BROWSER ROOTS
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Instantly convert raw blob stream to a clean local DOM data string
+            const imgUrl = URL.createObjectURL(file);
+            
+            uploadedImage = new Image();
+            uploadedImage.crossOrigin = "anonymous"; // Bypasses local file system sandbox restrictions
+            
+            uploadedImage.onload = () => {
+                processSourceImage();
+                URL.revokeObjectURL(imgUrl); // Free up browser memory leaks
+            };
+            uploadedImage.src = imgUrl;
+        });
+
+        contrastSlider.addEventListener('input', processSourceImage);
+        brightnessSlider.addEventListener('input', processSourceImage);
+
+        generateBtn.addEventListener('click', () => {
+            if (isGenerating) {
+                cancelAnimationFrame(animationId);
+                isGenerating = false;
+                generateBtn.innerText = "Compute String Paths";
+                statusText.innerText = "Processing interrupted by user.";
+                return;
+            }
+
+            const numPins = parseInt(numPinsInput.value);
+            const minJump = parseInt(minDistanceInput.value);
+            const weight = parseInt(lineWeightInput.value);
+
+            updatePins(numPins);
+
+            rDeficit = new Float32Array(rBackup);
+            gDeficit = new Float32Array(gBackup);
+            bDeficit = new Float32Array(bBackup);
+
+            artCtx.fillStyle = "#ffffff";
+            artCtx.fillRect(0, 0, SIZE, SIZE);
+
+            const phases = [
+                { name: "BLACK", lines: parseInt(linesBlackInput.value) || 0, color: "rgba(0,0,0,0.22)", channels: ['r', 'g', 'b'] },
+                { name: "RED",   lines: parseInt(linesRedInput.value) || 0,   color: "rgba(225,29,72,0.28)", channels: ['g', 'b'] }, 
+                { name: "GREEN", lines: parseInt(linesGreenInput.value) || 0, color: "rgba(22,163,74,0.28)", channels: ['r', 'b'] }, 
+                { name: "BLUE",  lines: parseInt(linesBlueInput.value) || 0,  color: "rgba(37,99,235,0.28)", channels: ['r', 'g'] }  
+            ].filter(p => p.lines > 0);
+
+            if (phases.length === 0) {
+                statusText.innerText = "Error: Line metrics cannot all be zero.";
+                return;
+            }
+
+            isGenerating = true;
+            generateBtn.innerText = "Stop Processing";
+            sequenceOutput.value = "=== GENERATED WEAVING INSTRUCTIONS ===\n\n";
+
+            let phaseIdx = 0;
+            let currentLine = 0;
+            let currentPin = 0;
+
+            function executeWeaveBlock() {
+                const startTime = performance.now();
+                let activePhase = phases[phaseIdx];
+
+                if (!activePhase) {
+                    statusText.innerText = "Weaving map generation complete!";
+                    generateBtn.innerText = "Compute String Paths";
+                    isGenerating = false;
+                    return;
+                }
+
+                if (currentLine === 0) {
+                    sequenceOutput.value += `--- START PHASE: ${activePhase.name} THREAD (Anchor at Pin 0) ---\n0`;
+                }
+
+                while (performance.now() - startTime < 16) {
+                    if (currentLine >= activePhase.lines) {
+                        sequenceOutput.value += "\n\n";
+                        phaseIdx++;
+                        currentLine = 0;
+                        currentPin = 0;
+                        if (phaseIdx >= phases.length) break;
+                        activePhase = phases[phaseIdx];
+                        sequenceOutput.value += `--- START PHASE: ${activePhase.name} THREAD (Anchor at Pin 0) ---\n0`;
+                    }
+
+                    let bestScore = -1;
+                    let bestPin = -1;
+                    let bestPixels = [];
+
+                    for (let i = 0; i < numPins; i++) {
+                        let distance = Math.abs(i - currentPin);
+                        if (distance < minJump || distance > numPins - minJump) continue;
+
+                        let pixels = getLinePixels(pins[currentPin], pins[i]);
+                        let score = 0;
+
+                        for (let idx of pixels) {
+                            if (activePhase.channels.includes('r')) score += rDeficit[idx];
+                            if (activePhase.channels.includes('g')) score += gDeficit[idx];
+                            if (activePhase.channels.includes('b')) score += bDeficit[idx];
+                        }
+                        score /= (pixels.length || 1);
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestPin = i;
+                            bestPixels = pixels;
+                        }
+                    }
+
+                    if (bestPin === -1) break;
+
+                    for (let idx of bestPixels) {
+                        if (activePhase.channels.includes('r')) rDeficit[idx] = Math.max(0, rDeficit[idx] - weight);
+                        if (activePhase.channels.includes('g')) gDeficit[idx] = Math.max(0, gDeficit[idx] - weight);
+                        if (activePhase.channels.includes('b')) bDeficit[idx] = Math.max(0, bDeficit[idx] - weight);
+                    }
+
+                    artCtx.beginPath();
+                    artCtx.moveTo(pins[currentPin].x, pins[currentPin].y);
+                    artCtx.lineTo(pins[bestPin].x, pins[bestPin].y);
+                    artCtx.strokeStyle = activePhase.color;
+                    artCtx.lineWidth = 0.55;
+                    artCtx.stroke();
+
+                    currentPin = bestPin;
+                    currentLine++;
+                    sequenceOutput.value += `, ${currentPin}`;
+                }
+
+                statusText.innerText = `Computing ${activePhase.name}: Line ${currentLine} / ${activePhase.lines}`;
+                sequenceOutput.scrollTop = sequenceOutput.scrollHeight;
+
+                if (isGenerating) {
+                    animationId = requestAnimationFrame(executeWeaveBlock);
+                }
+            }
+
+            animationId = requestAnimationFrame(executeWeaveBlock);
+        });
+    </script>
+</body>
+</html>
