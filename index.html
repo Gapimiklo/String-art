@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-Driven Intelligent Color String Studio</title>
+    <title>AI-Driven Color String Studio (MSE Physics)</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -25,7 +25,7 @@
             align-items: center;
         }
         h1 { margin-top: 0; margin-bottom: 5px; }
-        p { color: #94a3b8; margin-top: 0; margin-bottom: 20px; text-align: center; max-width: 600px;}
+        p { color: #94a3b8; margin-top: 0; margin-bottom: 20px; text-align: center; max-width: 650px;}
         
         .dashboard {
             display: flex;
@@ -169,8 +169,8 @@
 </head>
 <body>
 
-    <h1>AI-Driven Intelligent Color String Studio</h1>
-    <p>The AI scans all color profiles dynamically, picking only the specific colors needed to mathematically maximize detail.</p>
+    <h1>AI-Driven Color String Studio</h1>
+    <p>Using <strong>Mean Squared Error (MSE) Mathematics</strong> to perfectly balance Subtractive Color mixing. The AI will heavily penalize incorrect color choices.</p>
 
     <div class="dashboard">
         <div class="sidebar">
@@ -184,11 +184,11 @@
                 <div class="grid-inputs">
                     <div class="input-group">
                         <label>Contrast</label>
-                        <input type="range" id="contrast" min="-100" max="100" value="50">
+                        <input type="range" id="contrast" min="-100" max="100" value="30">
                     </div>
                     <div class="input-group">
                         <label>Brightness</label>
-                        <input type="range" id="brightness" min="-100" max="100" value="0">
+                        <input type="range" id="brightness" min="-100" max="100" value="10">
                     </div>
                 </div>
             </div>
@@ -198,7 +198,7 @@
                 <div class="grid-inputs">
                     <div class="input-group">
                         <label>Pins (Max 500)</label>
-                        <input type="number" id="numPins" value="240" min="100" max="500">
+                        <input type="number" id="numPins" value="288" min="100" max="500">
                     </div>
                     <div class="input-group">
                         <label>Min Pin Jump</label>
@@ -212,11 +212,11 @@
                 <div class="grid-inputs">
                     <div class="input-group">
                         <label>Total Line Limit</label>
-                        <input type="number" id="maxLines" value="3000" min="500" max="8000">
+                        <input type="number" id="maxLines" value="4000" min="500" max="10000">
                     </div>
                     <div class="input-group">
-                        <label>Thread Weight</label>
-                        <input type="number" id="lineWeight" value="18" min="1" max="50">
+                        <label>Thread Density</label>
+                        <input type="number" id="lineWeight" value="15" min="1" max="50">
                     </div>
                 </div>
             </div>
@@ -266,19 +266,21 @@
         let pins = [];
         let uploadedImage = null;
         let isGenerating = false;
-        let rDeficit = null, gDeficit = null, bDeficit = null;
-        let rBackup = null, gBackup = null, bBackup = null;
         let animationId = null;
 
-        // Subtractive Palette (Which color channels does each string absorb?)
+        // Image State Arrays
+        let targetR, targetG, targetB;
+        let currentR, currentG, currentB;
+
+        // True Subtractive Physics: Which light channels does the thread absorb?
         const AVAILABLE_COLORS = [
-            { name: "BLACK",   color: "rgba(15,23,42,0.25)",    channels: ['r', 'g', 'b'] },
-            { name: "RED",     color: "rgba(239,68,68,0.3)",    channels: ['g', 'b'] },
-            { name: "GREEN",   color: "rgba(34,197,94,0.3)",    channels: ['r', 'b'] },
-            { name: "BLUE",    color: "rgba(59,130,246,0.3)",   channels: ['r', 'g'] },
-            { name: "YELLOW",  color: "rgba(234,179,8,0.3)",    channels: ['b'] },
-            { name: "CYAN",    color: "rgba(6,182,212,0.3)",    channels: ['r'] },
-            { name: "MAGENTA", color: "rgba(217,70,239,0.3)",   channels: ['g'] }
+            { name: "BLACK",   color: "rgba(15,23,42,0.3)",    channels: ['r', 'g', 'b'] },
+            { name: "CYAN",    color: "rgba(6,182,212,0.3)",   channels: ['r'] },
+            { name: "MAGENTA", color: "rgba(236,72,153,0.3)",  channels: ['g'] },
+            { name: "YELLOW",  color: "rgba(234,179,8,0.3)",   channels: ['b'] },
+            { name: "RED",     color: "rgba(239,68,68,0.3)",   channels: ['g', 'b'] },
+            { name: "GREEN",   color: "rgba(34,197,94,0.3)",   channels: ['r', 'b'] },
+            { name: "BLUE",    color: "rgba(59,130,246,0.3)",  channels: ['r', 'g'] }
         ];
 
         function getLinePixels(p1, p2) {
@@ -338,9 +340,9 @@
             const brightness = parseInt(brightnessSlider.value);
             const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
-            rDeficit = new Float32Array(SIZE * SIZE);
-            gDeficit = new Float32Array(SIZE * SIZE);
-            bDeficit = new Float32Array(SIZE * SIZE);
+            targetR = new Float32Array(SIZE * SIZE);
+            targetG = new Float32Array(SIZE * SIZE);
+            targetB = new Float32Array(SIZE * SIZE);
 
             for (let i = 0; i < d.length; i += 4) {
                 let r = factor * (d[i] - 128) + 128 + brightness;
@@ -351,18 +353,14 @@
                 d[i+1] = Math.min(255, Math.max(0, g));
                 d[i+2] = Math.min(255, Math.max(0, b));
 
-                rDeficit[i / 4] = 255 - d[i];
-                gDeficit[i / 4] = 255 - d[i+1];
-                bDeficit[i / 4] = 255 - d[i+2];
+                targetR[i / 4] = d[i];
+                targetG[i / 4] = d[i+1];
+                targetB[i / 4] = d[i+2];
             }
             sourceCtx.putImageData(imgData, 0, 0);
-            
-            rBackup = new Float32Array(rDeficit);
-            gBackup = new Float32Array(gDeficit);
-            bBackup = new Float32Array(bDeficit);
 
             generateBtn.disabled = false;
-            statusText.innerText = "Target parsed. Click below to begin AI analysis.";
+            statusText.innerText = "Target parsed. Ready for generation.";
         }
 
         imageUpload.addEventListener('change', (e) => {
@@ -397,35 +395,34 @@
 
             updatePins(numPins);
 
-            rDeficit = new Float32Array(rBackup);
-            gDeficit = new Float32Array(gBackup);
-            bDeficit = new Float32Array(bBackup);
+            // Reset 'Canvas' State Arrays to pure White
+            currentR = new Float32Array(SIZE * SIZE); currentR.fill(255);
+            currentG = new Float32Array(SIZE * SIZE); currentG.fill(255);
+            currentB = new Float32Array(SIZE * SIZE); currentB.fill(255);
 
             artCtx.fillStyle = "#ffffff";
             artCtx.fillRect(0, 0, SIZE, SIZE);
 
             isGenerating = true;
             generateBtn.innerText = "Stop Processing";
-            sequenceOutput.value = "=== DYNAMIC AI WEAVING MAP ===\n\n";
+            sequenceOutput.value = "=== MSE DYNAMIC WEAVING MAP ===\n\n";
 
             let currentLine = 0;
             let currentPin = 0;
             let lastColorName = "";
-            
-            // Log keeping track of color choices used
             const colorStats = {};
             AVAILABLE_COLORS.forEach(c => colorStats[c.name] = 0);
 
             function executeIntelligentWeave() {
                 const startTime = performance.now();
 
-                while (performance.now() - startTime < 16 && currentLine < maxLines) {
-                    let bestScore = -1;
+                // 15ms batch loop to keep browser responsive
+                while (performance.now() - startTime < 15 && currentLine < maxLines) {
+                    let bestScore = -999999; // Can be negative now!
                     let bestPin = -1;
                     let bestColor = null;
                     let bestPixels = [];
 
-                    // 1. Scan every pin outside of the jump threshold
                     for (let i = 0; i < numPins; i++) {
                         let distance = Math.abs(i - currentPin);
                         if (distance < minJump || distance > numPins - minJump) continue;
@@ -433,18 +430,31 @@
                         let pixels = getLinePixels(pins[currentPin], pins[i]);
                         if (pixels.length === 0) continue;
 
-                        // 2. Scan every available thread pigment profile for this specific line
                         for (let colorObj of AVAILABLE_COLORS) {
                             let score = 0;
                             
+                            // Check Error improvement per pixel
                             for (let idx of pixels) {
-                                if (colorObj.channels.includes('r')) score += rDeficit[idx];
-                                if (colorObj.channels.includes('g')) score += gDeficit[idx];
-                                if (colorObj.channels.includes('b')) score += bDeficit[idx];
+                                let tr = targetR[idx], tg = targetG[idx], tb = targetB[idx];
+                                let cr = currentR[idx], cg = currentG[idx], cb = currentB[idx];
+
+                                // 1. Current Error squared
+                                let errBefore = (cr - tr)**2 + (cg - tg)**2 + (cb - tb)**2;
+
+                                // 2. Simulate placing thread
+                                let nr = Math.max(0, cr - (colorObj.channels.includes('r') ? weight : 0));
+                                let ng = Math.max(0, cg - (colorObj.channels.includes('g') ? weight : 0));
+                                let nb = Math.max(0, cb - (colorObj.channels.includes('b') ? weight : 0));
+
+                                // 3. New Error squared
+                                let errAfter = (nr - tr)**2 + (ng - tg)**2 + (nb - tb)**2;
+
+                                // If errAfter is lower, the score is positive (good)
+                                // If errAfter is higher (over-darkened), score is negative (penalty)
+                                score += (errBefore - errAfter);
                             }
                             score /= pixels.length;
 
-                            // We check if this structural modification beats previous options
                             if (score > bestScore) {
                                 bestScore = score;
                                 bestPin = i;
@@ -454,30 +464,28 @@
                         }
                     }
 
-                    if (bestPin === -1 || bestScore <= 1) {
-                        // Stop early if adding threads no longer improves accuracy
-                        statusText.innerText = "Target optimal threshold reached.";
+                    // Stop if placing ANY thread increases the error margin (score <= 0)
+                    if (bestPin === -1 || bestScore <= 0.1) {
+                        statusText.innerText = `Optimal completion reached at line ${currentLine}.`;
                         isGenerating = false;
                         break;
                     }
 
-                    // 3. Deduct selected pigment values from channel deficits
+                    // Apply the physical thread properties to our mathematical canvas
                     for (let idx of bestPixels) {
-                        if (bestColor.channels.includes('r')) rDeficit[idx] = Math.max(0, rDeficit[idx] - weight);
-                        if (bestColor.channels.includes('g')) gDeficit[idx] = Math.max(0, gDeficit[idx] - weight);
-                        if (bestColor.channels.includes('b')) bDeficit[idx] = Math.max(0, bDeficit[idx] - weight);
+                        if (bestColor.channels.includes('r')) currentR[idx] = Math.max(0, currentR[idx] - weight);
+                        if (bestColor.channels.includes('g')) currentG[idx] = Math.max(0, currentG[idx] - weight);
+                        if (bestColor.channels.includes('b')) currentB[idx] = Math.max(0, currentB[idx] - weight);
                     }
 
-                    // 4. Print instructions on color swap adjustments
                     if (bestColor.name !== lastColorName) {
-                        sequenceOutput.value += `\n[SWITCH TO ${bestColor.name}] -> Move to Peg ${currentPin}`;
+                        sequenceOutput.value += `\n[SWITCH TO ${bestColor.name}] -> Pin ${currentPin}`;
                         lastColorName = bestColor.name;
                     }
                     sequenceOutput.value += ` -> ${bestPin}`;
-                    
                     colorStats[bestColor.name]++;
 
-                    // 5. Draw line onto visualization layer
+                    // Render physical vector projection
                     artCtx.beginPath();
                     artCtx.moveTo(pins[currentPin].x, pins[currentPin].y);
                     artCtx.lineTo(pins[bestPin].x, pins[bestPin].y);
@@ -489,17 +497,17 @@
                     currentLine++;
                 }
 
-                // Format live telemetry summaries
+                // UI Telemetry
                 let metricsStr = Object.entries(colorStats)
                     .filter(([_, val]) => val > 0)
                     .map(([name, val]) => `${name}: ${val}`)
                     .join(" | ");
 
-                statusText.innerText = `Line ${currentLine}/${maxLines} (${metricsStr})`;
+                statusText.innerText = `L: ${currentLine}/${maxLines} (${metricsStr})`;
                 sequenceOutput.scrollTop = sequenceOutput.scrollHeight;
 
                 if (currentLine >= maxLines) {
-                    statusText.innerText = "Processing Complete! Review thread sequence below.";
+                    statusText.innerText = "Processing Complete! Review metrics below.";
                     generateBtn.innerText = "Compute Intelligent Paths";
                     isGenerating = false;
                 }
