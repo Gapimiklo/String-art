@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full-Color String Art Studio (Fixed)</title>
+    <title>AI-Driven Intelligent Color String Studio</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -25,7 +25,7 @@
             align-items: center;
         }
         h1 { margin-top: 0; margin-bottom: 5px; }
-        p { color: #94a3b8; margin-top: 0; margin-bottom: 20px; }
+        p { color: #94a3b8; margin-top: 0; margin-bottom: 20px; text-align: center; max-width: 600px;}
         
         .dashboard {
             display: flex;
@@ -169,8 +169,8 @@
 </head>
 <body>
 
-    <h1>Full-Color String Art Studio</h1>
-    <p>Simulates physical subtractive color layering using standard multi-colored threads</p>
+    <h1>AI-Driven Intelligent Color String Studio</h1>
+    <p>The AI scans all color profiles dynamically, picking only the specific colors needed to mathematically maximize detail.</p>
 
     <div class="dashboard">
         <div class="sidebar">
@@ -184,11 +184,11 @@
                 <div class="grid-inputs">
                     <div class="input-group">
                         <label>Contrast</label>
-                        <input type="range" id="contrast" min="-100" max="100" value="45">
+                        <input type="range" id="contrast" min="-100" max="100" value="50">
                     </div>
                     <div class="input-group">
                         <label>Brightness</label>
-                        <input type="range" id="brightness" min="-100" max="100" value="5">
+                        <input type="range" id="brightness" min="-100" max="100" value="0">
                     </div>
                 </div>
             </div>
@@ -198,42 +198,30 @@
                 <div class="grid-inputs">
                     <div class="input-group">
                         <label>Pins (Max 500)</label>
-                        <input type="number" id="numPins" value="200" min="100" max="500">
+                        <input type="number" id="numPins" value="240" min="100" max="500">
                     </div>
                     <div class="input-group">
                         <label>Min Pin Jump</label>
-                        <input type="number" id="minDistance" value="20" min="5" max="100">
+                        <input type="number" id="minDistance" value="25" min="5" max="100">
                     </div>
                 </div>
             </div>
 
             <div class="section">
-                <h3>Thread Allocation (Lines)</h3>
+                <h3>Limits & Weights</h3>
                 <div class="grid-inputs">
                     <div class="input-group">
-                        <label style="color:#aaa;">Black Lines</label>
-                        <input type="number" id="linesBlack" value="1000" min="0" max="4000">
+                        <label>Total Line Limit</label>
+                        <input type="number" id="maxLines" value="3000" min="500" max="8000">
                     </div>
                     <div class="input-group">
-                        <label style="color:#ef4444;">Red Lines</label>
-                        <input type="number" id="linesRed" value="800" min="0" max="4000">
+                        <label>Thread Weight</label>
+                        <input type="number" id="lineWeight" value="18" min="1" max="50">
                     </div>
-                    <div class="input-group">
-                        <label style="color:#22c55e;">Green Lines</label>
-                        <input type="number" id="linesGreen" value="800" min="0" max="4000">
-                    </div>
-                    <div class="input-group">
-                        <label style="color:#3b82f6;">Blue Lines</label>
-                        <input type="number" id="linesBlue" value="800" min="0" max="4000">
-                    </div>
-                </div>
-                <div class="input-group" style="margin-top: 4px;">
-                    <label>Internal Thread Weight</label>
-                    <input type="number" id="lineWeight" value="15" min="1" max="50">
                 </div>
             </div>
 
-            <button id="generateBtn" disabled>Compute String Paths</button>
+            <button id="generateBtn" disabled>Compute Intelligent Paths</button>
         </div>
 
         <div class="workspaces">
@@ -250,7 +238,7 @@
                     <canvas id="artCanvas" width="800" height="800"></canvas>
                 </div>
                 <div id="status" class="status-text">Upload an image to unlock generation.</div>
-                <textarea id="sequenceOutput" placeholder="Your instructions with exact color swap steps will print here..." readonly></textarea>
+                <textarea id="sequenceOutput" placeholder="The AI will dictate real-time color changes step-by-step here..." readonly></textarea>
             </div>
         </div>
     </div>
@@ -265,11 +253,7 @@
         const numPinsInput = document.getElementById('numPins');
         const minDistanceInput = document.getElementById('minDistance');
         const lineWeightInput = document.getElementById('lineWeight');
-        
-        const linesBlackInput = document.getElementById('linesBlack');
-        const linesRedInput = document.getElementById('linesRed');
-        const linesGreenInput = document.getElementById('linesGreen');
-        const linesBlueInput = document.getElementById('linesBlue');
+        const maxLinesInput = document.getElementById('maxLines');
 
         const sourceCanvas = document.getElementById('sourceCanvas');
         const artCanvas = document.getElementById('artCanvas');
@@ -285,6 +269,17 @@
         let rDeficit = null, gDeficit = null, bDeficit = null;
         let rBackup = null, gBackup = null, bBackup = null;
         let animationId = null;
+
+        // Subtractive Palette (Which color channels does each string absorb?)
+        const AVAILABLE_COLORS = [
+            { name: "BLACK",   color: "rgba(15,23,42,0.25)",    channels: ['r', 'g', 'b'] },
+            { name: "RED",     color: "rgba(239,68,68,0.3)",    channels: ['g', 'b'] },
+            { name: "GREEN",   color: "rgba(34,197,94,0.3)",    channels: ['r', 'b'] },
+            { name: "BLUE",    color: "rgba(59,130,246,0.3)",   channels: ['r', 'g'] },
+            { name: "YELLOW",  color: "rgba(234,179,8,0.3)",    channels: ['b'] },
+            { name: "CYAN",    color: "rgba(6,182,212,0.3)",    channels: ['r'] },
+            { name: "MAGENTA", color: "rgba(217,70,239,0.3)",   channels: ['g'] }
+        ];
 
         function getLinePixels(p1, p2) {
             let pixels = [];
@@ -367,23 +362,18 @@
             bBackup = new Float32Array(bDeficit);
 
             generateBtn.disabled = false;
-            statusText.innerText = "Target parsed successfully. Ready to generate.";
+            statusText.innerText = "Target parsed. Click below to begin AI analysis.";
         }
 
-        // FIXED UPLOAD LOGIC USING OBJECT URL & ANONYMOUS BROWSER ROOTS
         imageUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
-            // Instantly convert raw blob stream to a clean local DOM data string
             const imgUrl = URL.createObjectURL(file);
-            
             uploadedImage = new Image();
-            uploadedImage.crossOrigin = "anonymous"; // Bypasses local file system sandbox restrictions
-            
+            uploadedImage.crossOrigin = "anonymous";
             uploadedImage.onload = () => {
                 processSourceImage();
-                URL.revokeObjectURL(imgUrl); // Free up browser memory leaks
+                URL.revokeObjectURL(imgUrl);
             };
             uploadedImage.src = imgUrl;
         });
@@ -395,14 +385,15 @@
             if (isGenerating) {
                 cancelAnimationFrame(animationId);
                 isGenerating = false;
-                generateBtn.innerText = "Compute String Paths";
-                statusText.innerText = "Processing interrupted by user.";
+                generateBtn.innerText = "Compute Intelligent Paths";
+                statusText.innerText = "Interrupted.";
                 return;
             }
 
             const numPins = parseInt(numPinsInput.value);
             const minJump = parseInt(minDistanceInput.value);
             const weight = parseInt(lineWeightInput.value);
+            const maxLines = parseInt(maxLinesInput.value);
 
             updatePins(numPins);
 
@@ -413,106 +404,112 @@
             artCtx.fillStyle = "#ffffff";
             artCtx.fillRect(0, 0, SIZE, SIZE);
 
-            const phases = [
-                { name: "BLACK", lines: parseInt(linesBlackInput.value) || 0, color: "rgba(0,0,0,0.22)", channels: ['r', 'g', 'b'] },
-                { name: "RED",   lines: parseInt(linesRedInput.value) || 0,   color: "rgba(225,29,72,0.28)", channels: ['g', 'b'] }, 
-                { name: "GREEN", lines: parseInt(linesGreenInput.value) || 0, color: "rgba(22,163,74,0.28)", channels: ['r', 'b'] }, 
-                { name: "BLUE",  lines: parseInt(linesBlueInput.value) || 0,  color: "rgba(37,99,235,0.28)", channels: ['r', 'g'] }  
-            ].filter(p => p.lines > 0);
-
-            if (phases.length === 0) {
-                statusText.innerText = "Error: Line metrics cannot all be zero.";
-                return;
-            }
-
             isGenerating = true;
             generateBtn.innerText = "Stop Processing";
-            sequenceOutput.value = "=== GENERATED WEAVING INSTRUCTIONS ===\n\n";
+            sequenceOutput.value = "=== DYNAMIC AI WEAVING MAP ===\n\n";
 
-            let phaseIdx = 0;
             let currentLine = 0;
             let currentPin = 0;
+            let lastColorName = "";
+            
+            // Log keeping track of color choices used
+            const colorStats = {};
+            AVAILABLE_COLORS.forEach(c => colorStats[c.name] = 0);
 
-            function executeWeaveBlock() {
+            function executeIntelligentWeave() {
                 const startTime = performance.now();
-                let activePhase = phases[phaseIdx];
 
-                if (!activePhase) {
-                    statusText.innerText = "Weaving map generation complete!";
-                    generateBtn.innerText = "Compute String Paths";
-                    isGenerating = false;
-                    return;
-                }
-
-                if (currentLine === 0) {
-                    sequenceOutput.value += `--- START PHASE: ${activePhase.name} THREAD (Anchor at Pin 0) ---\n0`;
-                }
-
-                while (performance.now() - startTime < 16) {
-                    if (currentLine >= activePhase.lines) {
-                        sequenceOutput.value += "\n\n";
-                        phaseIdx++;
-                        currentLine = 0;
-                        currentPin = 0;
-                        if (phaseIdx >= phases.length) break;
-                        activePhase = phases[phaseIdx];
-                        sequenceOutput.value += `--- START PHASE: ${activePhase.name} THREAD (Anchor at Pin 0) ---\n0`;
-                    }
-
+                while (performance.now() - startTime < 16 && currentLine < maxLines) {
                     let bestScore = -1;
                     let bestPin = -1;
+                    let bestColor = null;
                     let bestPixels = [];
 
+                    // 1. Scan every pin outside of the jump threshold
                     for (let i = 0; i < numPins; i++) {
                         let distance = Math.abs(i - currentPin);
                         if (distance < minJump || distance > numPins - minJump) continue;
 
                         let pixels = getLinePixels(pins[currentPin], pins[i]);
-                        let score = 0;
+                        if (pixels.length === 0) continue;
 
-                        for (let idx of pixels) {
-                            if (activePhase.channels.includes('r')) score += rDeficit[idx];
-                            if (activePhase.channels.includes('g')) score += gDeficit[idx];
-                            if (activePhase.channels.includes('b')) score += bDeficit[idx];
-                        }
-                        score /= (pixels.length || 1);
+                        // 2. Scan every available thread pigment profile for this specific line
+                        for (let colorObj of AVAILABLE_COLORS) {
+                            let score = 0;
+                            
+                            for (let idx of pixels) {
+                                if (colorObj.channels.includes('r')) score += rDeficit[idx];
+                                if (colorObj.channels.includes('g')) score += gDeficit[idx];
+                                if (colorObj.channels.includes('b')) score += bDeficit[idx];
+                            }
+                            score /= pixels.length;
 
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestPin = i;
-                            bestPixels = pixels;
+                            // We check if this structural modification beats previous options
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestPin = i;
+                                bestColor = colorObj;
+                                bestPixels = pixels;
+                            }
                         }
                     }
 
-                    if (bestPin === -1) break;
+                    if (bestPin === -1 || bestScore <= 1) {
+                        // Stop early if adding threads no longer improves accuracy
+                        statusText.innerText = "Target optimal threshold reached.";
+                        isGenerating = false;
+                        break;
+                    }
 
+                    // 3. Deduct selected pigment values from channel deficits
                     for (let idx of bestPixels) {
-                        if (activePhase.channels.includes('r')) rDeficit[idx] = Math.max(0, rDeficit[idx] - weight);
-                        if (activePhase.channels.includes('g')) gDeficit[idx] = Math.max(0, gDeficit[idx] - weight);
-                        if (activePhase.channels.includes('b')) bDeficit[idx] = Math.max(0, bDeficit[idx] - weight);
+                        if (bestColor.channels.includes('r')) rDeficit[idx] = Math.max(0, rDeficit[idx] - weight);
+                        if (bestColor.channels.includes('g')) gDeficit[idx] = Math.max(0, gDeficit[idx] - weight);
+                        if (bestColor.channels.includes('b')) bDeficit[idx] = Math.max(0, bDeficit[idx] - weight);
                     }
 
+                    // 4. Print instructions on color swap adjustments
+                    if (bestColor.name !== lastColorName) {
+                        sequenceOutput.value += `\n[SWITCH TO ${bestColor.name}] -> Move to Peg ${currentPin}`;
+                        lastColorName = bestColor.name;
+                    }
+                    sequenceOutput.value += ` -> ${bestPin}`;
+                    
+                    colorStats[bestColor.name]++;
+
+                    // 5. Draw line onto visualization layer
                     artCtx.beginPath();
                     artCtx.moveTo(pins[currentPin].x, pins[currentPin].y);
                     artCtx.lineTo(pins[bestPin].x, pins[bestPin].y);
-                    artCtx.strokeStyle = activePhase.color;
-                    artCtx.lineWidth = 0.55;
+                    artCtx.strokeStyle = bestColor.color;
+                    artCtx.lineWidth = 0.5;
                     artCtx.stroke();
 
                     currentPin = bestPin;
                     currentLine++;
-                    sequenceOutput.value += `, ${currentPin}`;
                 }
 
-                statusText.innerText = `Computing ${activePhase.name}: Line ${currentLine} / ${activePhase.lines}`;
+                // Format live telemetry summaries
+                let metricsStr = Object.entries(colorStats)
+                    .filter(([_, val]) => val > 0)
+                    .map(([name, val]) => `${name}: ${val}`)
+                    .join(" | ");
+
+                statusText.innerText = `Line ${currentLine}/${maxLines} (${metricsStr})`;
                 sequenceOutput.scrollTop = sequenceOutput.scrollHeight;
 
+                if (currentLine >= maxLines) {
+                    statusText.innerText = "Processing Complete! Review thread sequence below.";
+                    generateBtn.innerText = "Compute Intelligent Paths";
+                    isGenerating = false;
+                }
+
                 if (isGenerating) {
-                    animationId = requestAnimationFrame(executeWeaveBlock);
+                    animationId = requestAnimationFrame(executeIntelligentWeave);
                 }
             }
 
-            animationId = requestAnimationFrame(executeWeaveBlock);
+            animationId = requestAnimationFrame(executeIntelligentWeave);
         });
     </script>
 </body>
